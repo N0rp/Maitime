@@ -3,9 +3,11 @@ package eu.dowsing.maiborntime;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 import javafx.application.Application;
@@ -16,7 +18,10 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.PieChart;
+import javafx.scene.chart.StackedAreaChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
@@ -32,6 +37,8 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 
+import au.com.bytecode.opencsv.CSVReader;
+import au.com.bytecode.opencsv.CSVWriter;
 import eu.dowsing.maiborntime.view.TimeView;
 import eu.dowsing.maiborntime.view.WorkView;
 import eu.dowsing.maiborntime.xml.model.Unit;
@@ -40,7 +47,17 @@ import eu.dowsing.maiborntime.xml.model.WorkStore;
 
 public class MaibornTimeFX extends Application {
 
+    private enum ChartType {
+        Pie, StackedArea
+    }
+
+    private static final String CSV_IN = "res/csv/in.csv";
+    private static final String CSV_OUT = "res/csv/out.csv";
+
     private static final String WORKSTORE_XML = "res/jaxb/workstore-jaxb.xml";
+
+    private PieChart pieChart;
+    private StackedAreaChart<Number, Number> stackedAreaChart;
 
     ObservableList<String> timeData = FXCollections.observableArrayList("chocolate", "salmon", "gold", "coral",
             "darkorchid", "darkgoldenrod", "lightsalmon", "black", "rosybrown", "blue", "blueviolet", "brown");
@@ -48,6 +65,8 @@ public class MaibornTimeFX extends Application {
 
     ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(new PieChart.Data("Intern", 27),
             new PieChart.Data("Extern", 73));
+
+    ObservableList<XYChart.Series<Number, Number>> stackedAreaChartData = FXCollections.observableArrayList();
 
     private TimeView timeView;
     private WorkView workView;
@@ -59,6 +78,12 @@ public class MaibornTimeFX extends Application {
 
     @Override
     public void start(final Stage stage) {
+        // add version number to xml
+        // add local / remote ids to xml for entries
+        // add separate, global xml for units, projects etc
+        // use ids to refer to global units, projects etc.
+        // add csv export and display
+        // add different types besides intern/extern to the global pie chart and model
 
         stage.setTitle("MaiTime");
 
@@ -86,6 +111,12 @@ public class MaibornTimeFX extends Application {
         // workData.setAll("chocolate", "salmon", "gold", "coral", "darkorchid", "darkgoldenrod", "lightsalmon",
         // "black",
         // "rosybrown", "blue", "blueviolet", "brown");
+        try {
+            launchCsv();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     private Region createSummaryView() {
@@ -98,30 +129,154 @@ public class MaibornTimeFX extends Application {
                 if (new_toggle == null || group.getSelectedToggle().getUserData() == null) {
                     System.out.println("New toggle");
                 } else {
-                    System.out.println("Toggle with user data: " + group.getSelectedToggle().getUserData());
-                    pieChartData.setAll((List<PieChart.Data>) group.getSelectedToggle().getUserData());
+                    Object userData = group.getSelectedToggle().getUserData();
+                    System.out.println("Toggle with user data: " + userData);
+
+                    if (userData instanceof ToggleData) {
+                        ToggleData toggleData = (ToggleData) userData;
+                        if (toggleData.getType() == ChartType.Pie) {
+                            showChart(ChartType.Pie);
+                            pieChartData.setAll((List<PieChart.Data>) toggleData.getData());
+
+                        } else if (toggleData.getType() == ChartType.StackedArea) {
+                            showChart(ChartType.StackedArea);
+                            stackedAreaChartData.setAll((List<XYChart.Series<Number, Number>>) toggleData.getData());
+                        }
+
+                    }
                 }
             }
         });
 
         ToggleButton tb1 = new ToggleButton("Total");
         tb1.setToggleGroup(group);
-        tb1.setSelected(true);
-        tb1.setUserData(Arrays.asList(new PieChart.Data("Intern", 23), new PieChart.Data("Extern", 77)));
+        tb1.setUserData(new ToggleData(ChartType.Pie, Arrays.asList(new PieChart.Data("Intern", 23), new PieChart.Data(
+                "Extern", 77))));
 
         ToggleButton tb2 = new ToggleButton("Projekt");
         tb2.setToggleGroup(group);
-        tb2.setUserData(Arrays.asList(new PieChart.Data("Cooles Project", 13),
-                new PieChart.Data("Internes Projekt", 13), new PieChart.Data("Internes Projekt", 74)));
+        tb2.setUserData(new ToggleData(ChartType.Pie, Arrays.asList(new PieChart.Data("Cooles Project", 13),
+                new PieChart.Data("Internes Projekt", 13), new PieChart.Data("Internes Projekt", 74))));
+
+        ToggleButton tb3 = new ToggleButton("Tage");
+        tb3.setToggleGroup(group);
+        tb3.setUserData(new ToggleData(ChartType.StackedArea, getAreaPerDay()));
+
+        ToggleButton tb4 = new ToggleButton("Projekte");
+        tb4.setToggleGroup(group);
+        tb4.setUserData(new ToggleData(ChartType.StackedArea, getAreaPerProject()));
 
         HBox toggleBox = new HBox();
-        toggleBox.getChildren().addAll(tb1, tb2);
+        toggleBox.getChildren().addAll(tb1, tb2, tb3, tb4);
 
-        final PieChart chart = new PieChart(pieChartData);
-        chart.setTitle("Auslastung");
+        pieChart = new PieChart(pieChartData);
+        pieChart.setTitle("Auslastung");
+        stackedAreaChart = createAreaChart();
 
-        chartBox.getChildren().addAll(toggleBox, chart);
+        tb1.setSelected(true);
+        showChart(ChartType.Pie);
+
+        HBox charts = new HBox();
+        charts.getChildren().addAll(pieChart, stackedAreaChart);
+
+        chartBox.getChildren().addAll(toggleBox, charts);
         return chartBox;
+    }
+
+    private void showChart(ChartType type) {
+        if (type == ChartType.Pie) {
+            pieChart.setVisible(true);
+            pieChart.setManaged(true);
+            stackedAreaChart.setVisible(false);
+            stackedAreaChart.setManaged(false);
+        } else if (type == ChartType.StackedArea) {
+            pieChart.setVisible(false);
+            pieChart.setManaged(false);
+            stackedAreaChart.setVisible(true);
+            stackedAreaChart.setManaged(true);
+        }
+    }
+
+    private StackedAreaChart<Number, Number> createAreaChart() {
+        final NumberAxis xAxis = new NumberAxis(1, 31, 1);
+        final NumberAxis yAxis = new NumberAxis();
+        final StackedAreaChart<Number, Number> sac = new StackedAreaChart<Number, Number>(xAxis, yAxis);
+        sac.setTitle("Auslastung pro Tag");
+
+        sac.setData(stackedAreaChartData);
+        stackedAreaChartData.setAll(getAreaPerDay());
+
+        return sac;
+    }
+
+    private List<XYChart.Series<Number, Number>> getAreaPerDay() {
+        XYChart.Series<Number, Number> seriesApril = new XYChart.Series<Number, Number>();
+        seriesApril.setName("April");
+        seriesApril.getData().add(new XYChart.Data(1, 4));
+        seriesApril.getData().add(new XYChart.Data(3, 10));
+        seriesApril.getData().add(new XYChart.Data(6, 15));
+        seriesApril.getData().add(new XYChart.Data(9, 8));
+        seriesApril.getData().add(new XYChart.Data(12, 5));
+        seriesApril.getData().add(new XYChart.Data(15, 18));
+        seriesApril.getData().add(new XYChart.Data(18, 15));
+        seriesApril.getData().add(new XYChart.Data(21, 13));
+        seriesApril.getData().add(new XYChart.Data(24, 19));
+        seriesApril.getData().add(new XYChart.Data(27, 21));
+        seriesApril.getData().add(new XYChart.Data(30, 21));
+        XYChart.Series<Number, Number> seriesMay = new XYChart.Series<Number, Number>();
+        seriesMay.setName("May");
+        seriesMay.getData().add(new XYChart.Data(1, 20));
+        seriesMay.getData().add(new XYChart.Data(3, 15));
+        seriesMay.getData().add(new XYChart.Data(6, 13));
+        seriesMay.getData().add(new XYChart.Data(9, 12));
+        seriesMay.getData().add(new XYChart.Data(12, 14));
+        seriesMay.getData().add(new XYChart.Data(15, 18));
+        seriesMay.getData().add(new XYChart.Data(18, 25));
+        seriesMay.getData().add(new XYChart.Data(21, 25));
+        seriesMay.getData().add(new XYChart.Data(24, 23));
+        seriesMay.getData().add(new XYChart.Data(27, 26));
+        seriesMay.getData().add(new XYChart.Data(31, 26));
+
+        List<XYChart.Series<Number, Number>> data = new LinkedList<>();
+        data.add(seriesApril);
+        data.add(seriesMay);
+
+        return data;
+    }
+
+    private List<XYChart.Series<Number, Number>> getAreaPerProject() {
+        XYChart.Series<Number, Number> projectA = new XYChart.Series<Number, Number>();
+        projectA.setName("Projekt A");
+        projectA.getData().add(new XYChart.Data(1, 12));
+        projectA.getData().add(new XYChart.Data(3, 11));
+        projectA.getData().add(new XYChart.Data(6, 15));
+        projectA.getData().add(new XYChart.Data(9, 8));
+        projectA.getData().add(new XYChart.Data(12, 5));
+        projectA.getData().add(new XYChart.Data(15, 18));
+        projectA.getData().add(new XYChart.Data(18, 15));
+        projectA.getData().add(new XYChart.Data(21, 13));
+        projectA.getData().add(new XYChart.Data(24, 19));
+        projectA.getData().add(new XYChart.Data(27, 21));
+        projectA.getData().add(new XYChart.Data(30, 21));
+        XYChart.Series<Number, Number> projectB = new XYChart.Series<Number, Number>();
+        projectB.setName("Projekt B");
+        projectB.getData().add(new XYChart.Data(1, 20));
+        projectB.getData().add(new XYChart.Data(3, 15));
+        projectB.getData().add(new XYChart.Data(6, 13));
+        projectB.getData().add(new XYChart.Data(9, 12));
+        projectB.getData().add(new XYChart.Data(12, 14));
+        projectB.getData().add(new XYChart.Data(15, 18));
+        projectB.getData().add(new XYChart.Data(18, 25));
+        projectB.getData().add(new XYChart.Data(21, 25));
+        projectB.getData().add(new XYChart.Data(24, 23));
+        projectB.getData().add(new XYChart.Data(27, 26));
+        projectB.getData().add(new XYChart.Data(31, 26));
+
+        List<XYChart.Series<Number, Number>> data = new LinkedList<>();
+        data.add(projectA);
+        data.add(projectB);
+
+        return data;
     }
 
     private Region createWorkView() {
@@ -248,6 +403,52 @@ public class MaibornTimeFX extends Application {
         }
 
         workData.setAll(workstore.getWorksList());
+    }
+
+    /**
+     * Launch the csv reader/writer
+     * 
+     * @throws IOException
+     */
+    private void launchCsv() throws IOException {
+        CSVReader reader = new CSVReader(new FileReader(CSV_IN));
+        List<String[]> myEntries = reader.readAll();
+        System.out.println("CSV contains: " + myEntries);
+
+        // bind to beans
+        // ColumnPositionMappingStrategy strat = new ColumnPositionMappingStrategy();
+        // strat.setType(YourOrderBean.class);
+        // String[] columns = new String[] {"name", "orderNumber", "id"}; // the fields to bind do in your JavaBean
+        // strat.setColumnMapping(columns);
+        //
+        // CsvToBean csv = new CsvToBean();
+        // List list = csv.parse(strat, yourReader);
+
+        // write beans
+        CSVWriter writer = new CSVWriter(new FileWriter(CSV_OUT), '\t');
+        // feed in your array (or convert your data to an array)
+        String[] entries = "first#second#third".split("#");
+        writer.writeNext(entries);
+        writer.close();
+    }
+
+    private final class ToggleData {
+    
+        private final Object data;
+        private final ChartType type;
+    
+        public ToggleData(ChartType type, Object data) {
+            this.type = type;
+            this.data = data;
+        }
+    
+        public ChartType getType() {
+            return this.type;
+        }
+    
+        public Object getData() {
+            return this.data;
+        }
     }
 
     public static void main(String[] args) throws IOException {
