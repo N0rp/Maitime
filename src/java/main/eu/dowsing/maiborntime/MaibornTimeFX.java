@@ -16,6 +16,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.scene.chart.PieChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
@@ -45,6 +46,9 @@ public class MaibornTimeFX extends Application {
             "darkorchid", "darkgoldenrod", "lightsalmon", "black", "rosybrown", "blue", "blueviolet", "brown");
     ObservableList<Work> workData = FXCollections.observableArrayList();
 
+    ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(new PieChart.Data("Intern", 27),
+            new PieChart.Data("Extern", 73));
+
     private TimeView timeView;
     private WorkView workView;
 
@@ -60,11 +64,12 @@ public class MaibornTimeFX extends Application {
 
         HBox mainBox = new HBox();
 
-        Region workBox = initWorkView();
-        Region timeBox = initTimeView();
-        mainBox.getChildren().addAll(timeBox, workBox);
+        Region workBox = createWorkView();
+        Region timeBox = createTimeView();
+        Region chartBox = createSummaryView();
+        mainBox.getChildren().addAll(timeBox, workBox, chartBox);
 
-        Scene scene = new Scene(mainBox, 600, 400);
+        Scene scene = new Scene(mainBox, 800, 400);
         stage.setScene(scene);
 
         stage.setScene(scene);
@@ -83,7 +88,43 @@ public class MaibornTimeFX extends Application {
         // "rosybrown", "blue", "blueviolet", "brown");
     }
 
-    private Region initWorkView() {
+    private Region createSummaryView() {
+        VBox chartBox = new VBox();
+
+        // create toggle group
+        final ToggleGroup group = new ToggleGroup();
+        group.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
+            public void changed(ObservableValue<? extends Toggle> ov, Toggle toggle, Toggle new_toggle) {
+                if (new_toggle == null || group.getSelectedToggle().getUserData() == null) {
+                    System.out.println("New toggle");
+                } else {
+                    System.out.println("Toggle with user data: " + group.getSelectedToggle().getUserData());
+                    pieChartData.setAll((List<PieChart.Data>) group.getSelectedToggle().getUserData());
+                }
+            }
+        });
+
+        ToggleButton tb1 = new ToggleButton("Total");
+        tb1.setToggleGroup(group);
+        tb1.setSelected(true);
+        tb1.setUserData(Arrays.asList(new PieChart.Data("Intern", 23), new PieChart.Data("Extern", 77)));
+
+        ToggleButton tb2 = new ToggleButton("Projekt");
+        tb2.setToggleGroup(group);
+        tb2.setUserData(Arrays.asList(new PieChart.Data("Cooles Project", 13),
+                new PieChart.Data("Internes Projekt", 13), new PieChart.Data("Internes Projekt", 74)));
+
+        HBox toggleBox = new HBox();
+        toggleBox.getChildren().addAll(tb1, tb2);
+
+        final PieChart chart = new PieChart(pieChartData);
+        chart.setTitle("Auslastung");
+
+        chartBox.getChildren().addAll(toggleBox, chart);
+        return chartBox;
+    }
+
+    private Region createWorkView() {
         VBox workBox = new VBox();
 
         Button button = new Button("Create New");
@@ -104,7 +145,7 @@ public class MaibornTimeFX extends Application {
         return workBox;
     }
 
-    private Region initTimeView() {
+    private Region createTimeView() {
         VBox timeBox = new VBox();
 
         // create toggle group
@@ -121,21 +162,21 @@ public class MaibornTimeFX extends Application {
             }
         });
 
-        ToggleButton tb1 = new ToggleButton("Jahr");
+        ToggleButton tb1 = new ToggleButton("J");
         tb1.setToggleGroup(group);
         tb1.setSelected(true);
         tb1.setUserData(Arrays.asList("2013", "2014"));
 
-        ToggleButton tb2 = new ToggleButton("Monat");
+        ToggleButton tb2 = new ToggleButton("M");
         tb2.setToggleGroup(group);
         tb2.setUserData(Arrays.asList("Januar", "Februar", "März", "April", "Mai"));
 
-        ToggleButton tb3 = new ToggleButton("Woche");
+        ToggleButton tb3 = new ToggleButton("W");
         tb3.setToggleGroup(group);
         tb3.setUserData(Arrays.asList("Januar KW 04", "Februar KW 05", "Februar KW 06", "Februar KW 07",
                 "Februar KW 08"));
 
-        ToggleButton tb4 = new ToggleButton("Tag");
+        ToggleButton tb4 = new ToggleButton("T");
         tb4.setToggleGroup(group);
         tb4.setUserData(Arrays.asList("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"));
 
