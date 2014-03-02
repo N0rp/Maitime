@@ -17,19 +17,33 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class WorkStore {
 
     // XmLElementWrapper generates a wrapper element around XML representation
-    @XmlElementWrapper(name = "bookList")
+    @XmlElementWrapper(name = "workList")
     // XmlElement sets the name of the entities
-    @XmlElement(name = "book")
-    private ArrayList<Work> bookList;
+    @XmlElement(name = "work")
+    private ArrayList<Work> workList;
+    // XmLElementWrapper generates a wrapper element around XML representation
+    @XmlElementWrapper(name = "unitList")
+    // XmlElement sets the name of the entities
+    @XmlElement(name = "unit")
+    private ArrayList<Unit> unitList;
+
     private String name;
     private String location;
 
-    public void setBookList(ArrayList<Work> bookList) {
-        this.bookList = bookList;
+    public void setWorkList(ArrayList<Work> bookList) {
+        this.workList = bookList;
     }
 
-    public ArrayList<Work> getBooksList() {
-        return bookList;
+    public ArrayList<Work> getWorksList() {
+        return workList;
+    }
+
+    public void setUnitList(ArrayList<Unit> unitList) {
+        this.unitList = unitList;
+    }
+
+    public ArrayList<Unit> getUnitsList() {
+        return unitList;
     }
 
     public String getName() {

@@ -4,29 +4,42 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
-@XmlRootElement(name = "book")
+@XmlRootElement(name = "work")
 /**
  * Defines work that is done by the user
  * @author richardg
  *
  */
-@XmlType(propOrder = { "author", "name", "publisher", "isbn" })
+@XmlType(propOrder = { "author", "time", "unit", "partner", "project", "subproject", "task", "subtask", "taskTime" })
 public class Work {
 
-    private String name;
     private String author;
-    private String publisher;
-    private String isbn;
+    private long time;
+    private String unit;
+    private String partner;
+    private String project;
+    private String subproject;
+    private String task;
+    private String subtask;
+    private long taskTime;
 
     // If you like the variable name, e.g. "name", you can easily change this
     // name for your XML-Output:
     @XmlElement(name = "title")
-    public String getName() {
-        return name;
+    public String getTask() {
+        return task;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setTask(String task) {
+        this.task = task;
+    }
+
+    public String getSubtask() {
+        return subtask;
+    }
+
+    public void setSubtask(String subTask) {
+        this.subtask = subTask;
     }
 
     public String getAuthor() {
@@ -37,20 +50,52 @@ public class Work {
         this.author = author;
     }
 
-    public String getPublisher() {
-        return publisher;
+    public long getTime() {
+        return time;
     }
 
-    public void setPublisher(String publisher) {
-        this.publisher = publisher;
+    public void setTime(long time) {
+        this.time = time;
     }
 
-    public String getIsbn() {
-        return isbn;
+    public String getUnit() {
+        return unit;
     }
 
-    public void setIsbn(String isbn) {
-        this.isbn = isbn;
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
+
+    public String getPartner() {
+        return partner;
+    }
+
+    public void setPartner(String partner) {
+        this.partner = partner;
+    }
+
+    public String getProject() {
+        return project;
+    }
+
+    public void setProject(String project) {
+        this.project = project;
+    }
+
+    public String getSubproject() {
+        return subproject;
+    }
+
+    public void setSubproject(String subproject) {
+        this.subproject = subproject;
+    }
+
+    public long getTaskTime() {
+        return taskTime;
+    }
+
+    public void setTaskTime(long taskTime) {
+        this.taskTime = taskTime;
     }
 
 }

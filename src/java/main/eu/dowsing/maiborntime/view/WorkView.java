@@ -2,57 +2,47 @@ package eu.dowsing.maiborntime.view;
 
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
 import javafx.util.Callback;
+import eu.dowsing.maiborntime.xml.model.Work;
 
-public class WorkView extends ListView<String> {
+public class WorkView extends ListView<Work> {
 
-    private final ObservableList<String> data;
+    private final ObservableList<Work> data;
 
-    public WorkView(ObservableList<String> data) {
+    public WorkView(ObservableList<Work> data) {
         this.data = data;
+        init();
     }
 
     public void init() {
-
         setItems(data);
 
-        data.addListener(new ListChangeListener<String>() {
-
+        setCellFactory(new Callback<ListView<Work>, ListCell<Work>>() {
             @Override
-            public void onChanged(javafx.collections.ListChangeListener.Change<? extends String> arg0) {
-                System.out.println("Work data changed");
-                setItems(data);
-            }
-        });
-
-        setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
-            @Override
-            public ListCell<String> call(ListView<String> list) {
+            public ListCell<Work> call(ListView<Work> list) {
                 return new ColorRectCell();
             }
         });
 
-        getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
-            public void changed(ObservableValue<? extends String> ov, String old_val, String new_val) {
+        getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Work>() {
+            public void changed(ObservableValue<? extends Work> ov, Work old_val, Work new_val) {
 
             }
         });
     }
 
-    static class ColorRectCell extends ListCell<String> {
+    static class ColorRectCell extends ListCell<Work> {
         @Override
-        public void updateItem(String item, boolean empty) {
+        public void updateItem(Work item, boolean empty) {
             super.updateItem(item, empty);
-            Rectangle rect = new Rectangle(100, 20);
+
             if (item != null) {
-                rect.setFill(Color.web(item));
-                setGraphic(rect);
+                Text txt = new Text(item.getAuthor());
+                setGraphic(txt);
             }
         }
     }

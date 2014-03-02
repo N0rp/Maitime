@@ -31,9 +31,11 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 
-import eu.dowsing.example.xml.Book;
-import eu.dowsing.example.xml.BookStore;
 import eu.dowsing.maiborntime.view.TimeView;
+import eu.dowsing.maiborntime.view.WorkView;
+import eu.dowsing.maiborntime.xml.model.Unit;
+import eu.dowsing.maiborntime.xml.model.Work;
+import eu.dowsing.maiborntime.xml.model.WorkStore;
 
 public class MaibornTimeFX extends Application {
 
@@ -41,20 +43,20 @@ public class MaibornTimeFX extends Application {
 
     ObservableList<String> timeData = FXCollections.observableArrayList("chocolate", "salmon", "gold", "coral",
             "darkorchid", "darkgoldenrod", "lightsalmon", "black", "rosybrown", "blue", "blueviolet", "brown");
-    ObservableList<String> workData = FXCollections.observableArrayList("chocolate", "salmon");
+    ObservableList<Work> workData = FXCollections.observableArrayList();
 
     private TimeView timeView;
-    private TimeView workView;
+    private WorkView workView;
 
     public MaibornTimeFX() {
         timeView = new TimeView(timeData);
-        workView = new TimeView(workData);
+        workView = new WorkView(workData);
     }
 
     @Override
     public void start(final Stage stage) {
 
-        stage.setTitle("MaibornTimeFX");
+        stage.setTitle("MaiTime");
 
         HBox mainBox = new HBox();
 
@@ -76,8 +78,9 @@ public class MaibornTimeFX extends Application {
             e.printStackTrace();
         }
 
-        workData.setAll("chocolate", "salmon", "gold", "coral", "darkorchid", "darkgoldenrod", "lightsalmon", "black",
-                "rosybrown", "blue", "blueviolet", "brown");
+        // workData.setAll("chocolate", "salmon", "gold", "coral", "darkorchid", "darkgoldenrod", "lightsalmon",
+        // "black",
+        // "rosybrown", "blue", "blueviolet", "brown");
     }
 
     private Region initWorkView() {
@@ -88,8 +91,10 @@ public class MaibornTimeFX extends Application {
             @Override
             public void handle(ActionEvent e) {
                 System.out.println("Creating new");
-                workData.add("red");
-
+                // workData.add("red");
+                Work work = new Work();
+                work.setAuthor("Temp");
+                workData.add(work);
             }
         });
 
@@ -123,15 +128,16 @@ public class MaibornTimeFX extends Application {
 
         ToggleButton tb2 = new ToggleButton("Monat");
         tb2.setToggleGroup(group);
-        tb2.setUserData(Arrays.asList("Januar", "Februar", "How", "Are", "You"));
+        tb2.setUserData(Arrays.asList("Januar", "Februar", "März", "April", "Mai"));
 
         ToggleButton tb3 = new ToggleButton("Woche");
         tb3.setToggleGroup(group);
-        tb3.setUserData(Arrays.asList("Januar KW 04", "Februar KW 05", "Februar KW 06", "Are", "You"));
+        tb3.setUserData(Arrays.asList("Januar KW 04", "Februar KW 05", "Februar KW 06", "Februar KW 07",
+                "Februar KW 08"));
 
         ToggleButton tb4 = new ToggleButton("Tag");
         tb4.setToggleGroup(group);
-        tb4.setUserData(Arrays.asList("Montag", "Dienstag", "Mittwoch", "Are", "You"));
+        tb4.setUserData(Arrays.asList("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"));
 
         HBox toggleBox = new HBox();
         toggleBox.getChildren().addAll(tb1, tb2, tb3, tb4);
@@ -143,49 +149,64 @@ public class MaibornTimeFX extends Application {
     }
 
     private void launchJaxb() throws JAXBException, FileNotFoundException {
-        ArrayList<Book> bookList = new ArrayList<Book>();
+        File jaxbFile = new File(WORKSTORE_XML);
+        if (jaxbFile.exists()) {
+            System.out.println("Jaxb exists");
+        } else {
+            System.out.println("Jaxb does not exist");
+        }
 
-        // create books
-        Book book1 = new Book();
-        book1.setIsbn("978-0060554736");
-        book1.setName("The Game");
-        book1.setAuthor("Neil Strauss");
-        book1.setPublisher("Harpercollins");
-        bookList.add(book1);
+        // create work
+        ArrayList<Work> workList = new ArrayList<Work>();
 
-        Book book2 = new Book();
-        book2.setIsbn("978-3832180577");
-        book2.setName("Feuchtgebiete");
-        book2.setAuthor("Charlotte Roche");
-        book2.setPublisher("Dumont Buchverlag");
-        bookList.add(book2);
+        Work work1 = new Work();
+        work1.setAuthor("Neil Strauss");
+        workList.add(work1);
+
+        Work work2 = new Work();
+        work2.setAuthor("Wilhelm Tell");
+        workList.add(work2);
+
+        // create unit
+        ArrayList<Unit> unitList = new ArrayList<>();
+
+        Unit unit1 = new Unit();
+        unit1.setName("PE");
+        unitList.add(unit1);
+
+        Unit unit2 = new Unit();
+        unit2.setName("SE");
+        unitList.add(unit2);
 
         // create bookstore, assigning book
-        BookStore bookstore = new BookStore();
-        bookstore.setName("Fraport Bookstore");
-        bookstore.setLocation("Frankfurt Airport");
-        bookstore.setBookList(bookList);
+        WorkStore workstore = new WorkStore();
+        workstore.setName("Fraport Bookstore");
+        workstore.setLocation("Frankfurt Airport");
+        workstore.setWorkList(workList);
+        workstore.setUnitList(unitList);
 
         // create JAXB context and instantiate marshaller
-        JAXBContext context = JAXBContext.newInstance(BookStore.class);
+        JAXBContext context = JAXBContext.newInstance(WorkStore.class);
         Marshaller m = context.createMarshaller();
         m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 
         // Write to System.out
-        m.marshal(bookstore, System.out);
+        m.marshal(workstore, System.out);
 
         // Write to File
-        m.marshal(bookstore, new File(WORKSTORE_XML));
+        m.marshal(workstore, new File(WORKSTORE_XML));
 
         // get variables from our xml file, created before
         System.out.println();
         System.out.println("Output from our XML File: ");
         Unmarshaller um = context.createUnmarshaller();
-        BookStore bookstore2 = (BookStore) um.unmarshal(new FileReader(WORKSTORE_XML));
-        ArrayList<Book> list = bookstore2.getBooksList();
-        for (Book book : list) {
-            System.out.println("Book: " + book.getName() + " from " + book.getAuthor());
+        WorkStore fileStore = (WorkStore) um.unmarshal(new FileReader(WORKSTORE_XML));
+        ArrayList<Work> list = fileStore.getWorksList();
+        for (Work work : list) {
+            System.out.println("Book: " + work.getTask() + " from " + work.getAuthor());
         }
+
+        workData.setAll(workstore.getWorksList());
     }
 
     public static void main(String[] args) throws IOException {
