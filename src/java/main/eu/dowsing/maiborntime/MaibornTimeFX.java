@@ -26,6 +26,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -39,8 +40,9 @@ import javax.xml.bind.Unmarshaller;
 
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
-import eu.dowsing.maiborntime.view.TimeView;
-import eu.dowsing.maiborntime.view.WorkView;
+import eu.dowsing.maiborntime.view.DetailedWorkItemView;
+import eu.dowsing.maiborntime.view.TimeListView;
+import eu.dowsing.maiborntime.view.WorkListView;
 import eu.dowsing.maiborntime.xml.model.Unit;
 import eu.dowsing.maiborntime.xml.model.Work;
 import eu.dowsing.maiborntime.xml.model.WorkStore;
@@ -68,12 +70,12 @@ public class MaibornTimeFX extends Application {
 
     ObservableList<XYChart.Series<Number, Number>> stackedAreaChartData = FXCollections.observableArrayList();
 
-    private TimeView timeView;
-    private WorkView workView;
+    private TimeListView timeView;
+    private WorkListView workView;
 
     public MaibornTimeFX() {
-        timeView = new TimeView(timeData);
-        workView = new WorkView(workData);
+        timeView = new TimeListView(timeData);
+        workView = new WorkListView(workData);
     }
 
     @Override
@@ -88,13 +90,16 @@ public class MaibornTimeFX extends Application {
         stage.setTitle("MaiTime");
 
         HBox mainBox = new HBox();
-
         Region workBox = createWorkView();
         Region timeBox = createTimeView();
         Region chartBox = createSummaryView();
         mainBox.getChildren().addAll(timeBox, workBox, chartBox);
 
-        Scene scene = new Scene(mainBox, 800, 400);
+        VBox allBox = new VBox();
+        Region currentWorkView = createCurrentWorkView();
+        allBox.getChildren().addAll(mainBox, currentWorkView);
+
+        Scene scene = new Scene(allBox, 800, 400);
         stage.setScene(scene);
 
         stage.setScene(scene);
@@ -117,70 +122,6 @@ public class MaibornTimeFX extends Application {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-    }
-
-    private Region createSummaryView() {
-        VBox chartBox = new VBox();
-
-        // create toggle group
-        final ToggleGroup group = new ToggleGroup();
-        group.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
-            public void changed(ObservableValue<? extends Toggle> ov, Toggle toggle, Toggle new_toggle) {
-                if (new_toggle == null || group.getSelectedToggle().getUserData() == null) {
-                    System.out.println("New toggle");
-                } else {
-                    Object userData = group.getSelectedToggle().getUserData();
-                    System.out.println("Toggle with user data: " + userData);
-
-                    if (userData instanceof ToggleData) {
-                        ToggleData toggleData = (ToggleData) userData;
-                        if (toggleData.getType() == ChartType.Pie) {
-                            showChart(ChartType.Pie);
-                            pieChartData.setAll((List<PieChart.Data>) toggleData.getData());
-
-                        } else if (toggleData.getType() == ChartType.StackedArea) {
-                            showChart(ChartType.StackedArea);
-                            stackedAreaChartData.setAll((List<XYChart.Series<Number, Number>>) toggleData.getData());
-                        }
-
-                    }
-                }
-            }
-        });
-
-        ToggleButton tb1 = new ToggleButton("Total");
-        tb1.setToggleGroup(group);
-        tb1.setUserData(new ToggleData(ChartType.Pie, Arrays.asList(new PieChart.Data("Intern", 23), new PieChart.Data(
-                "Extern", 77))));
-
-        ToggleButton tb2 = new ToggleButton("Projekt");
-        tb2.setToggleGroup(group);
-        tb2.setUserData(new ToggleData(ChartType.Pie, Arrays.asList(new PieChart.Data("Cooles Project", 13),
-                new PieChart.Data("Internes Projekt", 13), new PieChart.Data("Internes Projekt", 74))));
-
-        ToggleButton tb3 = new ToggleButton("Tage");
-        tb3.setToggleGroup(group);
-        tb3.setUserData(new ToggleData(ChartType.StackedArea, getAreaPerDay()));
-
-        ToggleButton tb4 = new ToggleButton("Projekte");
-        tb4.setToggleGroup(group);
-        tb4.setUserData(new ToggleData(ChartType.StackedArea, getAreaPerProject()));
-
-        HBox toggleBox = new HBox();
-        toggleBox.getChildren().addAll(tb1, tb2, tb3, tb4);
-
-        pieChart = new PieChart(pieChartData);
-        pieChart.setTitle("Auslastung");
-        stackedAreaChart = createAreaChart();
-
-        tb1.setSelected(true);
-        showChart(ChartType.Pie);
-
-        HBox charts = new HBox();
-        charts.getChildren().addAll(pieChart, stackedAreaChart);
-
-        chartBox.getChildren().addAll(toggleBox, charts);
-        return chartBox;
     }
 
     private void showChart(ChartType type) {
@@ -279,9 +220,10 @@ public class MaibornTimeFX extends Application {
         return data;
     }
 
-    private Region createWorkView() {
-        VBox workBox = new VBox();
+    private DetailedWorkItemView currentWorkView = new DetailedWorkItemView();
 
+    private Region createCurrentWorkView() {
+        VBox currentBox = new VBox();
         Button button = new Button("Create New");
         button.setOnAction(new EventHandler<ActionEvent>() {
             @Override
@@ -293,8 +235,107 @@ public class MaibornTimeFX extends Application {
                 workData.add(work);
             }
         });
+        currentBox.getChildren().addAll(currentWorkView, button);
+        return currentBox;
+    }
 
-        workBox.getChildren().addAll(button, workView);
+    private Region createSummaryView() {
+        VBox chartBox = new VBox();
+
+        // create toggle group
+        final ToggleGroup group = new ToggleGroup();
+        group.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
+            public void changed(ObservableValue<? extends Toggle> ov, Toggle toggle, Toggle new_toggle) {
+                if (new_toggle == null || group.getSelectedToggle().getUserData() == null) {
+                    System.out.println("New toggle");
+                } else {
+                    Object userData = group.getSelectedToggle().getUserData();
+                    System.out.println("Toggle with user data: " + userData);
+
+                    if (userData instanceof ToggleData) {
+                        ToggleData toggleData = (ToggleData) userData;
+                        if (toggleData.getType() == ChartType.Pie) {
+                            showChart(ChartType.Pie);
+                            if (!pieChartData.equals(toggleData.getData())) {
+                                pieChartData.setAll((List<PieChart.Data>) toggleData.getData());
+                            }
+
+                        } else if (toggleData.getType() == ChartType.StackedArea) {
+                            showChart(ChartType.StackedArea);
+                            if (!stackedAreaChartData.equals(toggleData.getData())) {
+                                stackedAreaChartData.setAll((List<XYChart.Series<Number, Number>>) toggleData.getData());
+                            }
+                        }
+
+                    }
+                }
+            }
+        });
+
+        ToggleButton tb1 = new ToggleButton("Total");
+        tb1.setToggleGroup(group);
+        tb1.setUserData(new ToggleData(ChartType.Pie, Arrays.asList(new PieChart.Data("Intern", 23), new PieChart.Data(
+                "Extern", 77))));
+
+        ToggleButton tb2 = new ToggleButton("Projekt");
+        tb2.setToggleGroup(group);
+        tb2.setUserData(new ToggleData(ChartType.Pie, Arrays.asList(new PieChart.Data("Cooles Project", 13),
+                new PieChart.Data("Internes Projekt", 13), new PieChart.Data("Internes Projekt", 74))));
+
+        ToggleButton tb3 = new ToggleButton("Tage");
+        tb3.setToggleGroup(group);
+        tb3.setUserData(new ToggleData(ChartType.StackedArea, getAreaPerDay()));
+
+        ToggleButton tb4 = new ToggleButton("Projekte");
+        tb4.setToggleGroup(group);
+        tb4.setUserData(new ToggleData(ChartType.StackedArea, getAreaPerProject()));
+
+        HBox toggleBox = new HBox();
+        toggleBox.getChildren().addAll(tb1, tb2, tb3, tb4);
+
+        pieChart = new PieChart(pieChartData);
+        pieChart.setTitle("Auslastung");
+        stackedAreaChart = createAreaChart();
+
+        tb1.setSelected(true);
+        showChart(ChartType.Pie);
+
+        HBox charts = new HBox();
+        charts.getChildren().addAll(pieChart, stackedAreaChart);
+
+        chartBox.getChildren().addAll(toggleBox, charts);
+        return chartBox;
+    }
+
+    private Region createWorkView() {
+        VBox workBox = new VBox();
+
+        final ToggleGroup group = new ToggleGroup();
+        group.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
+            public void changed(ObservableValue<? extends Toggle> ov, Toggle toggle, Toggle new_toggle) {
+                if (group.getSelectedToggle().getUserData().equals("Details")) {
+
+                } else if (group.getSelectedToggle().getUserData().equals("Info")) {
+
+                }
+            }
+        });
+
+        ToggleButton tb1 = new ToggleButton("Details");
+        tb1.setToggleGroup(group);
+        tb1.setUserData("Details");
+        tb1.setTooltip(new Tooltip("Detailansicht der Arbeitszeiten"));
+
+        ToggleButton tb2 = new ToggleButton("Info");
+        tb2.setToggleGroup(group);
+        tb2.setUserData("Info");
+        tb2.setTooltip(new Tooltip("Zusammenfassung der Arbeitszeiten"));
+
+        tb1.setSelected(true);
+        HBox toggleBox = new HBox();
+        toggleBox.getChildren().addAll(tb1, tb2);
+
+        workBox.getChildren().addAll(toggleBox, workView);
         VBox.setVgrow(workView, Priority.ALWAYS);
 
         return workBox;
@@ -344,6 +385,9 @@ public class MaibornTimeFX extends Application {
         return timeBox;
     }
 
+    private ArrayList<Unit> unitList = new ArrayList<>();
+    private ArrayList<Work> workList = new ArrayList<Work>();
+
     private void launchJaxb() throws JAXBException, FileNotFoundException {
         File jaxbFile = new File(WORKSTORE_XML);
         if (jaxbFile.exists()) {
@@ -353,18 +397,20 @@ public class MaibornTimeFX extends Application {
         }
 
         // create work
-        ArrayList<Work> workList = new ArrayList<Work>();
+        workList.clear();
 
         Work work1 = new Work();
         work1.setAuthor("Neil Strauss");
+        work1.setPartner("CoolCompany");
         workList.add(work1);
 
         Work work2 = new Work();
         work2.setAuthor("Wilhelm Tell");
+        work2.setPartner("Best Company");
         workList.add(work2);
 
         // create unit
-        ArrayList<Unit> unitList = new ArrayList<>();
+        unitList.clear();
 
         Unit unit1 = new Unit();
         unit1.setName("PE");
@@ -433,19 +479,19 @@ public class MaibornTimeFX extends Application {
     }
 
     private final class ToggleData {
-    
+
         private final Object data;
         private final ChartType type;
-    
+
         public ToggleData(ChartType type, Object data) {
             this.type = type;
             this.data = data;
         }
-    
+
         public ChartType getType() {
             return this.type;
         }
-    
+
         public Object getData() {
             return this.data;
         }
