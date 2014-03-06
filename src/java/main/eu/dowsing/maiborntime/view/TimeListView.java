@@ -1,45 +1,37 @@
 package eu.dowsing.maiborntime.view;
 
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.text.Text;
 import javafx.util.Callback;
+import eu.dowsing.maiborntime.time.model.TimeList;
 
-public class TimeListView extends ListView<String> {
+public class TimeListView extends ListView<TimeList> {
 
-    private final ObservableList<String> data;
+    // private final ObservableList<String> data;
 
-    public TimeListView(ObservableList<String> data) {
-        this.data = data;
+    public TimeListView(ObservableList<TimeList> data) {
+        setItems(data);
         init();
     }
 
     public void init() {
-        setItems(data);
 
-        setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+        setCellFactory(new Callback<ListView<TimeList>, ListCell<TimeList>>() {
             @Override
-            public ListCell<String> call(ListView<String> list) {
+            public ListCell<TimeList> call(ListView<TimeList> list) {
                 return new ColorRectCell();
-            }
-        });
-
-        getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
-            public void changed(ObservableValue<? extends String> ov, String old_val, String new_val) {
-
             }
         });
     }
 
-    static class ColorRectCell extends ListCell<String> {
+    static class ColorRectCell extends ListCell<TimeList> {
         @Override
-        public void updateItem(String item, boolean empty) {
+        public void updateItem(TimeList item, boolean empty) {
             super.updateItem(item, empty);
-            Text txt = new Text(item);
             if (item != null) {
+                Text txt = new Text(item.getName());
                 setGraphic(txt);
             }
         }

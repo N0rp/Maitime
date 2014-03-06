@@ -16,10 +16,14 @@ import javax.xml.bind.annotation.XmlType;
  * @author richardg
  *
  */
-@XmlType(propOrder = { "name" })
+@XmlType(propOrder = { "id", "name" })
 public class Unit {
 
     private String name;
+
+    // @XmlAttribute
+    // @XmlID
+    private int id;
 
     // If you like the variable name, e.g. "name", you can easily change this
     // name for your XML-Output:
@@ -30,5 +34,13 @@ public class Unit {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public int getId() {
+        return this.id;
     }
 }

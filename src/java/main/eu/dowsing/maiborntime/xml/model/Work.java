@@ -10,12 +10,18 @@ import javax.xml.bind.annotation.XmlType;
  * @author richardg
  *
  */
-@XmlType(propOrder = { "author", "time", "unit", "partner", "project", "subproject", "task", "subtask", "taskTime" })
+@XmlType(propOrder = { "author", "timeFrom", "timeTo", "unit", "partner", "project", "subproject", "task", "subtask",
+        "taskTime" })
 public class Work {
 
     private String author;
-    private long time;
-    private String unit;
+    private long timeFrom;
+    private long timeTo;
+
+    // @XmlAttribute
+    // @XmlIDREF
+    private int unit;
+
     private String partner;
     private String project;
     private String subproject;
@@ -50,19 +56,27 @@ public class Work {
         this.author = author;
     }
 
-    public long getTime() {
-        return time;
+    public long getTimeFrom() {
+        return timeFrom;
     }
 
-    public void setTime(long time) {
-        this.time = time;
+    public void setTimeFrom(long time) {
+        this.timeFrom = time;
     }
 
-    public String getUnit() {
+    public long getTimeTo() {
+        return timeTo;
+    }
+
+    public void setTimeTo(long time) {
+        this.timeTo = time;
+    }
+
+    public int getUnit() {
         return unit;
     }
 
-    public void setUnit(String unit) {
+    public void setUnit(int unit) {
         this.unit = unit;
     }
 

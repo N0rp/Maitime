@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -33,16 +34,17 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
 
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
+import eu.dowsing.maiborntime.time.model.SingleTimeUnit.TimeUnit;
+import eu.dowsing.maiborntime.time.model.TimeList;
+import eu.dowsing.maiborntime.time.model.WorkStoreDivider;
 import eu.dowsing.maiborntime.view.DetailedWorkItemView;
 import eu.dowsing.maiborntime.view.TimeListView;
 import eu.dowsing.maiborntime.view.WorkListView;
+import eu.dowsing.maiborntime.xml.model.MasterDataStore;
 import eu.dowsing.maiborntime.xml.model.Unit;
 import eu.dowsing.maiborntime.xml.model.Work;
 import eu.dowsing.maiborntime.xml.model.WorkStore;
@@ -57,13 +59,14 @@ public class MaibornTimeFX extends Application {
     private static final String CSV_OUT = "res/csv/out.csv";
 
     private static final String WORKSTORE_XML = "res/jaxb/workstore-jaxb.xml";
+    private static final String MASTERDATASTORE_XML = "res/jaxb/masterdatastore-jaxb.xml";
 
     private PieChart pieChart;
     private StackedAreaChart<Number, Number> stackedAreaChart;
 
-    ObservableList<String> timeData = FXCollections.observableArrayList("chocolate", "salmon", "gold", "coral",
-            "darkorchid", "darkgoldenrod", "lightsalmon", "black", "rosybrown", "blue", "blueviolet", "brown");
     ObservableList<Work> workData = FXCollections.observableArrayList();
+
+    ObservableList<TimeList> timeData = FXCollections.observableArrayList();
 
     ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(new PieChart.Data("Intern", 27),
             new PieChart.Data("Extern", 73));
@@ -73,8 +76,23 @@ public class MaibornTimeFX extends Application {
     private TimeListView timeView;
     private WorkListView workView;
 
+    private TimeUnit currentTimeUnit = TimeUnit.Year;
+
+    private WorkStoreDivider divider = new WorkStoreDivider();
+
     public MaibornTimeFX() {
         timeView = new TimeListView(timeData);
+
+        timeView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TimeList>() {
+            public void changed(ObservableValue<? extends TimeList> ov, TimeList old_val, TimeList new_val) {
+                if (new_val != null) {
+                    workData.setAll(new_val.getWork());
+                } else {
+                    // set empty list
+                    workData.setAll(new LinkedList<Work>());
+                }
+            }
+        });
         workView = new WorkListView(workData);
     }
 
@@ -99,7 +117,8 @@ public class MaibornTimeFX extends Application {
         Region currentWorkView = createCurrentWorkView();
         allBox.getChildren().addAll(mainBox, currentWorkView);
 
-        Scene scene = new Scene(allBox, 800, 400);
+        workBox.setMinWidth(500);
+        Scene scene = new Scene(allBox, 1200, 400);
         stage.setScene(scene);
 
         stage.setScene(scene);
@@ -107,11 +126,13 @@ public class MaibornTimeFX extends Application {
 
         System.out.println("Showing");
         try {
-            launchJaxb();
+            updateMasterData(MASTERDATASTORE_XML);
+            updateWork(WORKSTORE_XML);
         } catch (FileNotFoundException | JAXBException e) {
             System.err.println("Could not read xml file");
             e.printStackTrace();
         }
+        showTimeData(TimeUnit.Year);
 
         // workData.setAll("chocolate", "salmon", "gold", "coral", "darkorchid", "darkgoldenrod", "lightsalmon",
         // "black",
@@ -122,6 +143,14 @@ public class MaibornTimeFX extends Application {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    private void showTimeData(TimeUnit timeUnit) {
+        this.currentTimeUnit = timeUnit;
+        ObservableList<TimeList> timeList = divider.getTimeList(timeUnit);
+        System.out.println("Show time data of type: " + timeUnit + " and " + timeList.size() + " elements");
+
+        timeData.setAll(timeList);
     }
 
     private void showChart(ChartType type) {
@@ -153,30 +182,30 @@ public class MaibornTimeFX extends Application {
     private List<XYChart.Series<Number, Number>> getAreaPerDay() {
         XYChart.Series<Number, Number> seriesApril = new XYChart.Series<Number, Number>();
         seriesApril.setName("April");
-        seriesApril.getData().add(new XYChart.Data(1, 4));
-        seriesApril.getData().add(new XYChart.Data(3, 10));
-        seriesApril.getData().add(new XYChart.Data(6, 15));
-        seriesApril.getData().add(new XYChart.Data(9, 8));
-        seriesApril.getData().add(new XYChart.Data(12, 5));
-        seriesApril.getData().add(new XYChart.Data(15, 18));
-        seriesApril.getData().add(new XYChart.Data(18, 15));
-        seriesApril.getData().add(new XYChart.Data(21, 13));
-        seriesApril.getData().add(new XYChart.Data(24, 19));
-        seriesApril.getData().add(new XYChart.Data(27, 21));
-        seriesApril.getData().add(new XYChart.Data(30, 21));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(1, 4));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(3, 10));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(6, 15));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(9, 8));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(12, 5));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(15, 18));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(18, 15));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(21, 13));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(24, 19));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(27, 21));
+        seriesApril.getData().add(new XYChart.Data<Number, Number>(30, 21));
         XYChart.Series<Number, Number> seriesMay = new XYChart.Series<Number, Number>();
         seriesMay.setName("May");
-        seriesMay.getData().add(new XYChart.Data(1, 20));
-        seriesMay.getData().add(new XYChart.Data(3, 15));
-        seriesMay.getData().add(new XYChart.Data(6, 13));
-        seriesMay.getData().add(new XYChart.Data(9, 12));
-        seriesMay.getData().add(new XYChart.Data(12, 14));
-        seriesMay.getData().add(new XYChart.Data(15, 18));
-        seriesMay.getData().add(new XYChart.Data(18, 25));
-        seriesMay.getData().add(new XYChart.Data(21, 25));
-        seriesMay.getData().add(new XYChart.Data(24, 23));
-        seriesMay.getData().add(new XYChart.Data(27, 26));
-        seriesMay.getData().add(new XYChart.Data(31, 26));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(1, 20));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(3, 15));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(6, 13));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(9, 12));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(12, 14));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(15, 18));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(18, 25));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(21, 25));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(24, 23));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(27, 26));
+        seriesMay.getData().add(new XYChart.Data<Number, Number>(31, 26));
 
         List<XYChart.Series<Number, Number>> data = new LinkedList<>();
         data.add(seriesApril);
@@ -188,30 +217,30 @@ public class MaibornTimeFX extends Application {
     private List<XYChart.Series<Number, Number>> getAreaPerProject() {
         XYChart.Series<Number, Number> projectA = new XYChart.Series<Number, Number>();
         projectA.setName("Projekt A");
-        projectA.getData().add(new XYChart.Data(1, 12));
-        projectA.getData().add(new XYChart.Data(3, 11));
-        projectA.getData().add(new XYChart.Data(6, 15));
-        projectA.getData().add(new XYChart.Data(9, 8));
-        projectA.getData().add(new XYChart.Data(12, 5));
-        projectA.getData().add(new XYChart.Data(15, 18));
-        projectA.getData().add(new XYChart.Data(18, 15));
-        projectA.getData().add(new XYChart.Data(21, 13));
-        projectA.getData().add(new XYChart.Data(24, 19));
-        projectA.getData().add(new XYChart.Data(27, 21));
-        projectA.getData().add(new XYChart.Data(30, 21));
+        projectA.getData().add(new XYChart.Data<Number, Number>(1, 12));
+        projectA.getData().add(new XYChart.Data<Number, Number>(3, 11));
+        projectA.getData().add(new XYChart.Data<Number, Number>(6, 15));
+        projectA.getData().add(new XYChart.Data<Number, Number>(9, 8));
+        projectA.getData().add(new XYChart.Data<Number, Number>(12, 5));
+        projectA.getData().add(new XYChart.Data<Number, Number>(15, 18));
+        projectA.getData().add(new XYChart.Data<Number, Number>(18, 15));
+        projectA.getData().add(new XYChart.Data<Number, Number>(21, 13));
+        projectA.getData().add(new XYChart.Data<Number, Number>(24, 19));
+        projectA.getData().add(new XYChart.Data<Number, Number>(27, 21));
+        projectA.getData().add(new XYChart.Data<Number, Number>(30, 21));
         XYChart.Series<Number, Number> projectB = new XYChart.Series<Number, Number>();
         projectB.setName("Projekt B");
-        projectB.getData().add(new XYChart.Data(1, 20));
-        projectB.getData().add(new XYChart.Data(3, 15));
-        projectB.getData().add(new XYChart.Data(6, 13));
-        projectB.getData().add(new XYChart.Data(9, 12));
-        projectB.getData().add(new XYChart.Data(12, 14));
-        projectB.getData().add(new XYChart.Data(15, 18));
-        projectB.getData().add(new XYChart.Data(18, 25));
-        projectB.getData().add(new XYChart.Data(21, 25));
-        projectB.getData().add(new XYChart.Data(24, 23));
-        projectB.getData().add(new XYChart.Data(27, 26));
-        projectB.getData().add(new XYChart.Data(31, 26));
+        projectB.getData().add(new XYChart.Data<Number, Number>(1, 20));
+        projectB.getData().add(new XYChart.Data<Number, Number>(3, 15));
+        projectB.getData().add(new XYChart.Data<Number, Number>(6, 13));
+        projectB.getData().add(new XYChart.Data<Number, Number>(9, 12));
+        projectB.getData().add(new XYChart.Data<Number, Number>(12, 14));
+        projectB.getData().add(new XYChart.Data<Number, Number>(15, 18));
+        projectB.getData().add(new XYChart.Data<Number, Number>(18, 25));
+        projectB.getData().add(new XYChart.Data<Number, Number>(21, 25));
+        projectB.getData().add(new XYChart.Data<Number, Number>(24, 23));
+        projectB.getData().add(new XYChart.Data<Number, Number>(27, 26));
+        projectB.getData().add(new XYChart.Data<Number, Number>(31, 26));
 
         List<XYChart.Series<Number, Number>> data = new LinkedList<>();
         data.add(projectA);
@@ -232,7 +261,11 @@ public class MaibornTimeFX extends Application {
                 // workData.add("red");
                 Work work = new Work();
                 work.setAuthor("Temp");
-                workData.add(work);
+                Calendar c = Calendar.getInstance();
+                work.setTimeFrom(c.getTimeInMillis());
+                c.set(Calendar.HOUR_OF_DAY, 1);
+                work.setTimeTo(c.getTimeInMillis());
+                divider.addData(work);
             }
         });
         currentBox.getChildren().addAll(currentWorkView, button);
@@ -350,32 +383,32 @@ public class MaibornTimeFX extends Application {
             public void changed(ObservableValue<? extends Toggle> ov, Toggle toggle, Toggle new_toggle) {
                 if (new_toggle == null || group.getSelectedToggle().getUserData() == null) {
                     System.out.println("New toggle");
-                } else {
+                } else if (group.getSelectedToggle().getUserData() instanceof TimeUnit) {
                     System.out.println("Toggle with user data: " + group.getSelectedToggle().getUserData());
-                    List<String> toggleData = (List<String>) group.getSelectedToggle().getUserData();
-                    timeData.setAll(toggleData);
+                    TimeUnit toggleData = (TimeUnit) group.getSelectedToggle().getUserData();
+                    showTimeData(toggleData);
                 }
             }
         });
 
         ToggleButton tb1 = new ToggleButton("J");
         tb1.setToggleGroup(group);
-        tb1.setSelected(true);
-        tb1.setUserData(Arrays.asList("2013", "2014"));
+        tb1.setUserData(TimeUnit.Year);
 
         ToggleButton tb2 = new ToggleButton("M");
         tb2.setToggleGroup(group);
-        tb2.setUserData(Arrays.asList("Januar", "Februar", "März", "April", "Mai"));
+        tb2.setUserData(TimeUnit.Month);
 
         ToggleButton tb3 = new ToggleButton("W");
         tb3.setToggleGroup(group);
-        tb3.setUserData(Arrays.asList("Januar KW 04", "Februar KW 05", "Februar KW 06", "Februar KW 07",
-                "Februar KW 08"));
+        tb3.setUserData(TimeUnit.Week);
 
         ToggleButton tb4 = new ToggleButton("T");
         tb4.setToggleGroup(group);
-        tb4.setUserData(Arrays.asList("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"));
+        tb4.setUserData(TimeUnit.Date);
 
+        tb1.setSelected(true);
+        showTimeData(TimeUnit.Year);
         HBox toggleBox = new HBox();
         toggleBox.getChildren().addAll(tb1, tb2, tb3, tb4);
 
@@ -388,67 +421,56 @@ public class MaibornTimeFX extends Application {
     private ArrayList<Unit> unitList = new ArrayList<>();
     private ArrayList<Work> workList = new ArrayList<Work>();
 
-    private void launchJaxb() throws JAXBException, FileNotFoundException {
-        File jaxbFile = new File(WORKSTORE_XML);
-        if (jaxbFile.exists()) {
-            System.out.println("Jaxb exists");
-        } else {
-            System.out.println("Jaxb does not exist");
+    private void updateMasterData(String fileName) throws JAXBException, FileNotFoundException {
+        File jaxbFile = new File(fileName);
+        if (!jaxbFile.exists()) {
+            System.err.println("Jaxb does not exist");
+            return;
         }
 
-        // create work
-        workList.clear();
-
-        Work work1 = new Work();
-        work1.setAuthor("Neil Strauss");
-        work1.setPartner("CoolCompany");
-        workList.add(work1);
-
-        Work work2 = new Work();
-        work2.setAuthor("Wilhelm Tell");
-        work2.setPartner("Best Company");
-        workList.add(work2);
-
-        // create unit
-        unitList.clear();
-
-        Unit unit1 = new Unit();
-        unit1.setName("PE");
-        unitList.add(unit1);
-
-        Unit unit2 = new Unit();
-        unit2.setName("SE");
-        unitList.add(unit2);
-
-        // create bookstore, assigning book
-        WorkStore workstore = new WorkStore();
-        workstore.setName("Fraport Bookstore");
-        workstore.setLocation("Frankfurt Airport");
-        workstore.setWorkList(workList);
-        workstore.setUnitList(unitList);
-
-        // create JAXB context and instantiate marshaller
-        JAXBContext context = JAXBContext.newInstance(WorkStore.class);
-        Marshaller m = context.createMarshaller();
-        m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-
-        // Write to System.out
-        m.marshal(workstore, System.out);
-
-        // Write to File
-        m.marshal(workstore, new File(WORKSTORE_XML));
+        MasterDataStore workstore = MasterDataStore.generateTemplate();
+        MasterDataStore.write(fileName, workstore);
 
         // get variables from our xml file, created before
         System.out.println();
         System.out.println("Output from our XML File: ");
-        Unmarshaller um = context.createUnmarshaller();
-        WorkStore fileStore = (WorkStore) um.unmarshal(new FileReader(WORKSTORE_XML));
-        ArrayList<Work> list = fileStore.getWorksList();
-        for (Work work : list) {
-            System.out.println("Book: " + work.getTask() + " from " + work.getAuthor());
+        MasterDataStore fileStore = MasterDataStore.read(fileName);
+
+        for (Unit unit : fileStore.getUnitsList()) {
+            System.out.println("Unit: " + unit.getName());
         }
 
-        workData.setAll(workstore.getWorksList());
+        // clear data
+        unitList.clear();
+        // workData.setAll(masterStore.getWorksList());
+    }
+
+    private void updateWork(String fileName) throws JAXBException, FileNotFoundException {
+        File jaxbFile = new File(fileName);
+        if (!jaxbFile.exists()) {
+            System.err.println("Jaxb does not exist");
+            return;
+        }
+
+        // create JAXB context and instantiate marshaller
+        WorkStore workstore = WorkStore.generateTemplate();
+        WorkStore.write(fileName, workstore);
+
+        // get variables from our xml file, created before
+        System.out.println();
+        System.out.println("Output from our XML File: ");
+
+        WorkStore fileStore = WorkStore.read(fileName);
+        ArrayList<Work> list = fileStore.getWorksList();
+        for (Work work : list) {
+            System.out.println("Work task: " + work.getTask() + " from " + work.getAuthor());
+        }
+
+        // clear data
+        workList.clear();
+
+        divider.updateListData(fileStore);
+        System.out.println("Work xml update result: \n" + divider);
     }
 
     /**
